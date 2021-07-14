@@ -11,11 +11,14 @@ namespace SnakesAndLadders
         private MeshFilter meshFilter;
         private bool dirty;
 
-        public int numSections = 16;
-        public float sectionLength = 0.1f;
+        [Min(0)]
+        public float totalLength = 1;
+
+        [Range(1, 48)]
+        public int sectionResolution = 16;
 
         [Range(3, 48)]
-        public int numSides = 3;
+        public int numSides = 24;
 
         [Min(0)]
         public float bodyRadius = 0.5f;
@@ -27,10 +30,10 @@ namespace SnakesAndLadders
         public float tailLength = 0.2f;
 
         [Range(0, 5f)]
-        public float tailCurvePower = 0.8f;
+        public float tailThicknessExponent = 0.8f;
 
         [Min(1)]
-        public float tailCurveBias = 2;
+        public float tailRadialsBias = 2;
 
         private void Awake()
         {
@@ -44,59 +47,11 @@ namespace SnakesAndLadders
 
         private void GenerateSnake()
         {
-            var (tail, _) = CreateTail(Vector3.zero);
-            var (vtc, nrm, tri) = tail;
-            var msh = new Mesh { name = "snake mesh", vertices = vtc, normals = nrm, triangles = tri };
+            var (tail, tailEnd) = CreateTail(Vector3.zero);
+            var (body, _) = CreateBody(tailEnd);
+            var (vtc, nrm, tri, uvs) = tail.Append(body);
+            var msh = new Mesh { name = "snake mesh", vertices = vtc, normals = nrm, triangles = tri, uv = uvs};
             meshFilter.mesh = msh;
-            return;
-
-            //
-            // var mesh = new Mesh() { name = "snake mesh" };
-            // var vertices = new List<Vector3>();
-            // var normals = new List<Vector3>();
-            // var triangles = new List<int>();
-            // vertices.Add(Vector3.zero);
-            // normals.Add(Vector3.back);
-            // for (int section = 0; section <= numSections; section++)
-            // {
-            //     var centre = Vector3.forward * (sectionLength * section + tailLength);
-            //     if (section > 0)
-            //     {
-            //         for (int side = 0; side < numSides; side++)
-            //         {
-            //             var q = Quaternion.AngleAxis(side * 360f / numSides, Vector3.forward);
-            //             var vertex = centre + q * Vector3.up * bodyRadius;
-            //             vertices.Add(vertex);
-            //             var normal = -(centre - vertex).normalized / 3f;
-            //             normals.Add(normal);
-            //
-            //             int sideBase = (section - 1) * numSides + 1;
-            //             int vertexIdx = vertices.Count - 1;
-            //             if (section == 1)
-            //             {
-            //                 AddTriangle(triangles, vertexIdx, 0, vertexIdx % numSides + 1);
-            //             }
-            //             else
-            //             {
-            //                 int lowerSideBase = (section - 2) * numSides + 1;
-            //                 var quad = new[]
-            //                 {
-            //                     sideBase + side, sideBase + (side + 1) % numSides,
-            //                     lowerSideBase + (side + 1) % numSides, lowerSideBase + side
-            //                 };
-            //
-            //                 AddTriangle(triangles, quad[0], quad[2], quad[1]);
-            //                 AddTriangle(triangles, quad[0], quad[3], quad[2]);
-            //             }
-            //         }
-            //     }
-            // }
-            //
-            // Assert.AreEqual(vertices.Count, normals.Count);
-            // mesh.vertices = vertices.ToArray();
-            // mesh.normals = normals.ToArray();
-            // mesh.triangles = triangles.ToArray();
-            // meshFilter.mesh = mesh;
         }
 
         private static void AddTriangle(List<int> triangles, int point1, int point2, int point3)
@@ -106,23 +61,28 @@ namespace SnakesAndLadders
             triangles.Add(point3);
         }
 
-        // SQRT(1-((1-A2)^$E$1)^2)
         private float TailCurveFunc(float tailPos) =>
-            Mathf.Sqrt(1 - Mathf.Pow(Mathf.Pow(1 - tailPos, tailCurvePower), 2));
+            Mathf.Sqrt(1 - Mathf.Pow(1 - tailPos, tailThicknessExponent * 2));
+
+        private Vector2 GetUVForPosAndAngle(float pos, float angle)
+        {
+            return new Vector2(
+                1 -(angle + 180 * Mathf.Sign(180 - angle)) / 360f,
+                pos
+            );
+        }
 
         private (MeshSection tailMesh, Vector3 continuationPoint) CreateTail(Vector3 startPoint)
         {
-            var tailCore = startPoint + Vector3.forward * tailLength;
-
             // first point is the very center of the end of the tail
             var tail = new MeshSection();
-            tail.AddVertex(startPoint, Vector3.back);
+            tail.AddVertex(startPoint, Vector3.back, new Vector2(0.5f, 0));
 
-            var capRadius = TailCurveFunc(Mathf.Pow(0.0001f / tailSections, tailCurveBias)) * bodyRadius;
-            var tailCap = GetVerticesAroundCenter(startPoint, capRadius, false);
+            var tailCap = GetVerticesAroundCenter(startPoint, 0.0001f, false);
             for (var i = 0; i < tailCap.Length; i++)
             {
-                tail.AddVertex(tailCap[i], tailCap[i] - tailCore);
+                var (vertex, angle) = tailCap[i];
+                tail.AddVertex(vertex, Vector3.back, GetUVForPosAndAngle(0, angle));
                 tail.AddTriangle(i + 1, 0, (i + 1) % numSides + 1);
             }
 
@@ -130,23 +90,28 @@ namespace SnakesAndLadders
             for (var s = 0; s < tailSections; s++)
             {
                 float secPos = (float) (s + 1) / tailSections;
-                var currentPos = Mathf.Pow(secPos, tailCurveBias);
+                var currentPos = Mathf.Pow(secPos, tailRadialsBias);
+                var overallPos = currentPos * tailLength / totalLength;
 
                 var v = tail.NextVertexIndex;
                 int ThisRow(int n) => v + n % numSides;
                 int PrevRow(int n) => v - numSides + (n + numSides) % numSides;
 
-                var tailPoints = GetVerticesAtPos(currentPos, twist, startPoint);
+                var tailPoints = GetTailVerticesAtPos(currentPos, twist, startPoint);
+
                 for (var i = 0; i < tailPoints.Length; i++)
                 {
-                    var adjacentVertex = tailPoints[(i - 1 + numSides) % numSides];
-                    var normal = Vector3.Cross(tailPoints[i], adjacentVertex);
-                    tail.AddVertex(tailPoints[i], normal);
-
                     var a = ThisRow(i);
                     var b = ThisRow(i + 1);
                     var t = PrevRow(i - (twist ? 0 : 1));
                     var u = PrevRow(i + (twist ? 1 : 0));
+
+                    var (vertex, angle) = tailPoints[i];
+                    var side1 = vertex - tail.Vertices[t];
+                    var side2 = vertex - tail.Vertices[u];
+                    var normal = Vector3.Cross(side1, side2);
+                    
+                    tail.AddVertex(vertex, normal, GetUVForPosAndAngle(overallPos, angle));
                     tail.AddTriangle(a, t, u);
                     tail.AddTriangle(a, u, b);
                 }
@@ -154,31 +119,80 @@ namespace SnakesAndLadders
                 twist = !twist;
             }
 
+            var tailCore = startPoint + Vector3.forward * tailLength;
+            Debug.DrawLine(transform.position + tailCore, transform.position + tailCore + Vector3.up);
             return (tail, tailCore);
         }
 
-        private Vector3[] GetVerticesAtPos(float sectionPos, bool twist, Vector3 startPoint)
+        private (MeshSection bodyMesh, Vector3 continuationPoint) CreateBody(Vector3 startPoint)
+        {
+            var sectionLength = 1f / sectionResolution;
+            var bodyLength = totalLength - tailLength;
+            var numSections = bodyLength / sectionLength;
+            var body = new MeshSection();
+            var extraSection = numSections - Mathf.Floor(numSections) > 0.01;
+
+            Vector3 spine = startPoint;
+            bool twist = tailSections % 2 == 0;
+            for (int s = 1; s < numSections; s++)
+            {
+                spine = startPoint + s * sectionLength * Vector3.forward;
+                var overallPos = (tailLength + s * sectionLength) / totalLength;
+                
+                var vertices = GetVerticesAroundCenter(spine, bodyRadius, twist);
+                var v = body.NextVertexIndex;
+                int ThisRow(int n) => v + n % numSides;
+                int PrevRow(int n) => v - numSides + (n + numSides) % numSides;
+                for (var i = 0; i < vertices.Length; i++)
+                {
+                    var (vertex, angle) = vertices[i];
+                    var normal = vertex - spine;
+
+                    if (s != 0)
+                    {
+                        body.AddVertex(vertex, normal, GetUVForPosAndAngle(overallPos, angle));
+                    }
+
+                    var a = ThisRow(i);
+                    var b = ThisRow(i + 1);
+                    var t = PrevRow(i - (twist ? 0 : 1));
+                    var u = PrevRow(i + (twist ? 1 : 0));
+                    body.AddTriangle(a, t, u);
+                    body.AddTriangle(a, u, b);
+                }
+
+                twist = !twist;
+            }
+
+            return (body, spine);
+        }
+
+        private (Vector3 vertex, float angle)[] GetTailVerticesAtPos(float sectionPos, bool twist, Vector3 startPoint)
         {
             var posRadius = TailCurveFunc(sectionPos) * bodyRadius;
             var center = startPoint + sectionPos * tailLength * Vector3.forward;
-            Vector3[] result = GetVerticesAroundCenter(center, posRadius, twist);
-            return result;
+            return GetVerticesAroundCenter(center, posRadius, twist);
         }
 
-        private Vector3[] GetVerticesAroundCenter(Vector3 center, float radius, bool twist)
+        private (Vector3 vertex, float angle)[] GetVerticesAroundCenter(Vector3 center, float radius, bool twist)
         {
-            var first = Vector3.up * radius;
             var segmentAngle = 360f / numSides;
             var angleOffset = twist ? segmentAngle / 2f : 0;
-            var result = new Vector3[numSides];
+            var result = new (Vector3 vertex, float angle)[numSides];
             for (int i = 0; i < numSides; i++)
             {
                 var angle = i * segmentAngle + angleOffset;
-                var rotation = Quaternion.AngleAxis(angle, Vector3.forward);
-                result[i] = center + rotation * first;
+                result[i].vertex = GetVertexAtAngle(center, angle, radius);
+                result[i].angle = angle;
             }
 
             return result;
+        }
+
+        private Vector3 GetVertexAtAngle(Vector3 center, float angle, float radius)
+        {
+            var rotation = Quaternion.AngleAxis(angle, Vector3.forward);
+            return center + rotation * (Vector3.up * radius);
         }
 
         private void OnValidate()

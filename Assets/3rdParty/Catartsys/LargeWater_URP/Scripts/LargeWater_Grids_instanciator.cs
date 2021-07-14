@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
+﻿using UnityEngine;
 
 public class Large_Water_Grids_instanciator : MonoBehaviour
 {
@@ -39,7 +36,7 @@ public class Large_Water_Grids_instanciator : MonoBehaviour
 
         foreach (Transform child in this.transform)
         {
-            GameObject.Destroy(child.gameObject);
+            Destroy(child.gameObject);
         }
     }
 

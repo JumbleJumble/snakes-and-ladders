@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class SceneManager : MonoBehaviour {
@@ -49,7 +48,7 @@ public class SceneManager : MonoBehaviour {
 	{
 		if (actualSnake != null) 
 		{
-			GameObject.Destroy (actualSnake);
+			Destroy (actualSnake);
 		}
 		yield return null;
 

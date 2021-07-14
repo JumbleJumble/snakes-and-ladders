@@ -54,42 +54,42 @@ Material:
     m_Ints: []
     m_Floats:
     - Vector1_10B7BD24: 1.27
-    - Vector1_12198F11: 35.2
+    - Vector1_12198F11: 7.2
     - Vector1_1C04ACA9: 21.9
-    - Vector1_1D76351A: 0.76
-    - Vector1_2BD8E9F7: 0.037
-    - Vector1_3A3EA0FB: 0.248
-    - Vector1_3D7809C9: 4.78
-    - Vector1_3F1B17FA: 12.1
+    - Vector1_1D76351A: 0.9
+    - Vector1_2BD8E9F7: 0.135
+    - Vector1_3A3EA0FB: 0.65
+    - Vector1_3D7809C9: 0
+    - Vector1_3F1B17FA: 9.72
     - Vector1_417C92AE: 16.99
-    - Vector1_42CA2F7C: 11.7
-    - Vector1_4488867C: 0.3
-    - Vector1_46744A55: 9.34
-    - Vector1_53ED3B4B: -0.07
+    - Vector1_42CA2F7C: 15.85
+    - Vector1_4488867C: 0.065
+    - Vector1_46744A55: 4.16
+    - Vector1_53ED3B4B: -0.01
     - Vector1_58202ED7: 4
-    - Vector1_6070AF49: 178.51
-    - Vector1_665A0801: 0.662
-    - Vector1_6CC30BE: 54.48
-    - Vector1_8C73230: 0.25
-    - Vector1_ADEE287E: 0.14
+    - Vector1_6070AF49: 5.75
+    - Vector1_665A0801: 0.25
+    - Vector1_6CC30BE: 0.8
+    - Vector1_8C73230: 0.22
+    - Vector1_ADEE287E: 0.38
     - Vector1_B2B48D67: 127.3
     - Vector1_C2199BAE: 0.11
-    - Vector1_C3527EF0: 0.743
+    - Vector1_C3527EF0: 0.06
     - Vector1_C595CC03: 0
     - Vector1_C7D9146C: 1
-    - Vector1_D323B284: 0.56
+    - Vector1_D323B284: 0.71
     - Vector1_D498C285: 0
     - Vector1_D6A8BFC7: -59.71
     - Vector1_DC688492: 2000
-    - Vector1_E47E3501: 0.601
-    - Vector1_E50BFD55: 0.06
-    - Vector1_EC36055C: 0.395
-    - Vector1_F8B81910: 1.57
-    - Vector1_FDE8751A: 1.14
+    - Vector1_E47E3501: 0.36
+    - Vector1_E50BFD55: 0.029
+    - Vector1_EC36055C: 0.23
+    - Vector1_F8B81910: 1.53
+    - Vector1_FDE8751A: 0.44
     - Vector1_FF26A87B: 33.17
     m_Colors:
-    - Color_50C00F4E: {r: 0, g: 0.26415092, b: 0.23721792, a: 1}
-    - Color_6AF14163: {r: 0, g: 0.11824211, b: 0.31132078, a: 1}
+    - Color_50C00F4E: {r: 0.248309, g: 0.5660378, b: 0.5328422, a: 1}
+    - Color_6AF14163: {r: 0, g: 0.17820767, b: 0.30980393, a: 1}
   m_BuildTextureStacks: []
 --- !u!114 &3386865895175832212
 MonoBehaviour:

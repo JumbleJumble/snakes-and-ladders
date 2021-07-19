@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace SnakesAndLadders
@@ -54,13 +53,6 @@ namespace SnakesAndLadders
             meshFilter.mesh = msh;
         }
 
-        private static void AddTriangle(List<int> triangles, int point1, int point2, int point3)
-        {
-            triangles.Add(point1);
-            triangles.Add(point2);
-            triangles.Add(point3);
-        }
-
         private float TailCurveFunc(float tailPos) =>
             Mathf.Sqrt(1 - Mathf.Pow(1 - tailPos, tailThicknessExponent * 2));
 
@@ -89,9 +81,10 @@ namespace SnakesAndLadders
             bool twist = true;
             for (var s = 0; s < tailSections; s++)
             {
+                var endOfTail = tailLength / totalLength;
                 float secPos = (float) (s + 1) / tailSections;
                 var currentPos = Mathf.Pow(secPos, tailRadialsBias);
-                var overallPos = currentPos * tailLength / totalLength;
+                var uvPos = currentPos * endOfTail;
 
                 var v = tail.NextVertexIndex;
                 int ThisRow(int n) => v + n % numSides;
@@ -111,7 +104,7 @@ namespace SnakesAndLadders
                     var side2 = vertex - tail.Vertices[u];
                     var normal = Vector3.Cross(side1, side2);
                     
-                    tail.AddVertex(vertex, normal, GetUVForPosAndAngle(overallPos, angle));
+                    tail.AddVertex(vertex, normal, GetUVForPosAndAngle(uvPos, angle));
                     tail.AddTriangle(a, t, u);
                     tail.AddTriangle(a, u, b);
                 }
@@ -120,7 +113,6 @@ namespace SnakesAndLadders
             }
 
             var tailCore = startPoint + Vector3.forward * tailLength;
-            Debug.DrawLine(transform.position + tailCore, transform.position + tailCore + Vector3.up);
             return (tail, tailCore);
         }
 

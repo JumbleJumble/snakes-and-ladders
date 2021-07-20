@@ -7,18 +7,36 @@ namespace SnakesAndLadders
         public int numSides = 4;
         public int numSegments = 4;
 
-        public AnimationCurve tailWidthCurve = AnimationCurve.Linear(0, 1, 1, 0);
-        public AnimationCurve tailHeightCurve = AnimationCurve.Linear(0, 1, 1, 0);
-
+        [Header("Tail")]
+        public float tailWidthPower = 1;
+        public float tailHeightPower = 1;
+        public float tailRadialsBias = 1;
+        
         public override Mesh GenerateMesh()
         {
             if (numSides == 0)
             {
-                return null; 
+                return null;
             }
 
-            var bodyGenerator = new CylinderGenerator(Vector3.zero, 1, numSides, numSegments, 0.5f);
-            var bodySection = bodyGenerator.CreateSection();
+            var bodyGenerator = new CylinderGenerator(
+                Vector3.zero,
+                1,
+                numSides, 
+                numSegments,
+                0.5f);
+
+            var tailGenerator = new EndGenerator(
+                Vector3.zero,
+                1,
+                numSides,
+                numSegments,
+                0.5f,
+                tailRadialsBias,
+                tailWidthPower,
+                tailHeightPower);
+
+            var bodySection = tailGenerator.CreateSection();
             return bodySection.CreateMesh("Snake");
         }
     }

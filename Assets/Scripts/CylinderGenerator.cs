@@ -4,11 +4,11 @@ namespace SnakesAndLadders
 {
     public class CylinderGenerator
     {
-        private readonly Vector3 startPoint;
-        private readonly float length;
-        private readonly int numSides;
-        private readonly int numSegments;
-        private readonly float radius;
+        protected readonly Vector3 startPoint;
+        protected readonly float length;
+        protected readonly int numSides;
+        protected readonly int numSegments;
+        protected readonly float radius;
 
         public CylinderGenerator(Vector3 startPoint, float length, int numSides, int numSegments, float radius)
         {
@@ -19,42 +19,51 @@ namespace SnakesAndLadders
             this.radius = radius;
         }
 
-        protected virtual float GetRadius(float position) => radius;
+        protected virtual Vector2 GetScaleAtPos(float position) => new Vector2(1, 1);
+
+        private Vector3 StretchVector(Vector3 vector, Vector2 scale)
+        {
+            return new Vector3(vector.x * scale.x, vector.y * scale.y, vector.z);
+        }
 
         protected virtual float GetYRotation(float position) => 0;
 
-        protected virtual Vector3 GetXYZForPos(float position) => startPoint + position * Vector3.forward;
+        protected virtual Vector3 GetCenterForPos(float position) => startPoint + position * Vector3.forward;
 
-        protected (float angle, Vector3 vertex)[] GetVerticesAroundCenter(
+        protected virtual float GetRadialPos(float position) => position;
+
+        protected (float angle, Vector3 vert)[] GetVertsAroundCenter(
             Vector3 center,
             float yRotation,
-            float segmentRadius)
+            Vector2 scale)
         {
-            var result = new (float angle, Vector3 vertex)[numSides + 1];
+            var result = new (float angle, Vector3 vert)[numSides + 1];
             float degreesPerSide = 360f / numSides;
             var axis = Quaternion.AngleAxis(yRotation, Vector3.up) * Vector3.forward;
             for (int i = 0; i <= numSides; i++)
             {
                 var angle = -180 + degreesPerSide * i;
                 var rotation = Quaternion.AngleAxis(angle, axis);
-                result[i] = (angle, center + rotation * (Vector3.up * segmentRadius));
+                var squareOffset = rotation * (Vector3.up * radius);
+                var stretched = StretchVector(squareOffset, scale);
+                result[i] = (angle, center + stretched);
             }
 
             return result;
         }
 
-        private Vector2 GetUVForPosAndAngle(float pos, float angle)
-        {
-            var u = Mathf.InverseLerp(-180, 180, angle);
+        protected Vector2 GetUVForPosAndAngle(float pos, float angle)
+        { var u = Mathf.InverseLerp(-180, 180, angle);
             return new Vector2(u, pos);
         }
 
         protected virtual void StartSection(MeshSection section)
         {
-            var verticesAroundCenter = GetVerticesAroundCenter(startPoint, GetYRotation(0), GetRadius(0));
+            var scale = GetScaleAtPos(0);
+            var verticesAroundCenter = GetVertsAroundCenter(startPoint, GetYRotation(0), scale);
             foreach (var v in verticesAroundCenter)
             {
-                section.AddVertex(v.vertex, v.vertex, GetUVForPosAndAngle(0, v.angle));
+                section.AddVertex(v.vert, v.vert, GetUVForPosAndAngle(0, v.angle));
             }
         }
 
@@ -65,21 +74,22 @@ namespace SnakesAndLadders
             // first make points around the start point
             StartSection(section);
             int vertsPerSide = numSides + 1;
-            float segmentLength = length / numSegments;
-            for (int i = 1; i <= numSegments; i++)
+            for (int segment = 0; segment < numSegments; segment++)
             {
                 int vertStart = section.NextVertexIndex;
                 int vertIndex = vertStart;
-                float distanceFromStart = i * segmentLength;
-                float pos = distanceFromStart / length;
-                Vector3 center = startPoint + distanceFromStart * Vector3.forward;
-                var vertInfos = GetVerticesAroundCenter(center, GetYRotation(pos), GetRadius(pos));
+                var segmentFrac = (segment + 1f) / numSegments;
+                float pos = GetRadialPos(segmentFrac);
+                Vector3 center = GetCenterForPos(pos);
+                var scale = GetScaleAtPos(pos);
+                var vertInfos = GetVertsAroundCenter(center, GetYRotation(pos), scale);
 
-                // add the triangles
                 for (var side = 0; side < vertsPerSide; side++)
                 {
-                    var (angle, vertex) = vertInfos[side];
-                    section.AddVertex(vertex, GetUVForPosAndAngle(pos, angle));
+                    var (angle, vert) = vertInfos[side];
+                    var normal = GetNormal(section, side, vertIndex, vertsPerSide, vertInfos);
+
+                    section.AddVertex(vert, normal, GetUVForPosAndAngle(pos, angle));
 
                     if (side < numSides)
                     {
@@ -89,48 +99,47 @@ namespace SnakesAndLadders
 
                     vertIndex++;
                 }
-
-                // go back around and add the normals
-                vertIndex = vertStart;
-                for (var side = 0; side < vertsPerSide; side++)
-                {
-                    if (side == numSides)
-                    {
-                        section.AddNormal(section.Normals[vertIndex - numSides]);
-                        continue;
-                    }
-
-                    var (_, vertex) = vertInfos[side];
-                    var prevRow = vertIndex - vertsPerSide;
-                    var side1 = section.Vertices[prevRow] - vertex;
-
-                    var side2 = side == 0
-                        ? section.Vertices[vertIndex - 2] - vertex
-                        : section.Vertices[prevRow - 1] - vertex;
-
-                    var side3 = side == numSides
-                        ? section.Vertices[vertIndex - numSides] - vertex
-                        : section.Vertices[prevRow + 1] - vertex;
-
-                    var cross1 = Vector3.Cross(side1, side2).normalized;
-                    var cross2 = Vector3.Cross(side3, side1).normalized;
-                    var normal = -1 * (cross1 + cross2);
-                    section.AddNormal(normal);
-                    vertIndex++;
-                }
             }
 
             return section;
         }
-    }
 
-    public class TailGenerator : CylinderGenerator
-    {
-        public TailGenerator(Vector3 startPoint, float length, int numSides, int numSegments, float radius) 
-            : base(startPoint, length, numSides, numSegments, radius)
+        private Vector3 GetNormal(
+            MeshSection section,
+            int side,
+            int vertIndex,
+            int vertsPerSide,
+            (float angle, Vector3 vert)[] vertInfos,
+            bool showDebug = false)
         {
+            Vector3 normal;
+            var vert = vertInfos[side].vert;
+            if (side == numSides)
+            {
+                normal = section.Normals[vertIndex - numSides];
+            }
+            else
+            {
+                var prevRow = vertIndex - vertsPerSide;
+                var side1 = section.Vertices[prevRow] - vert;
+                var side2 = (vertInfos[(side + numSides - 1) % numSides].vert - vert).normalized;
+                var side3 = (vertInfos[(side + 1) % numSides].vert - vert).normalized;
+
+                var cross1 = Vector3.Cross(side2, side1).normalized;
+                var cross2 = Vector3.Cross(side1, side3).normalized;
+                normal = cross1 + cross2;
+
+                if (showDebug)
+                {
+                    Debug.DrawRay(vert, side1, Color.red);
+                    Debug.DrawRay(vert, side2, Color.green);
+                    Debug.DrawRay(vert, side3, Color.blue);
+                    Debug.DrawRay(vert, cross1, Color.yellow);
+                    Debug.DrawRay(vert, cross2, Color.magenta);
+                }
+            }
+
+            return normal;
         }
     }
 }
-
-

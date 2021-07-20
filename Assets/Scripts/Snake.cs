@@ -11,7 +11,8 @@ namespace SnakesAndLadders
         public float tailWidthPower = 1;
         public float tailHeightPower = 1;
         public float tailRadialsBias = 1;
-        
+        public float tailTextureVPower = 1;
+
         public override Mesh GenerateMesh()
         {
             if (numSides == 0)
@@ -21,17 +22,17 @@ namespace SnakesAndLadders
 
             var bodyGenerator = new CylinderGenerator(
                 Vector3.zero,
-                1,
-                numSides, 
-                numSegments,
-                0.5f);
-
-            var tailGenerator = new EndGenerator(
-                Vector3.zero,
-                1,
                 numSides,
                 numSegments,
                 0.5f,
+                1);
+
+            var tailGenerator = new EndGenerator(
+                Vector3.zero,
+                numSides,
+                numSegments,
+                0.5f,
+                tailTextureVPower,
                 tailRadialsBias,
                 tailWidthPower,
                 tailHeightPower);

@@ -4,19 +4,19 @@ namespace SnakesAndLadders
 {
     public class CylinderGenerator
     {
-        protected readonly Vector3 startPoint;
-        protected readonly float length;
+        private readonly Vector3 startPoint;
         protected readonly int numSides;
-        protected readonly int numSegments;
-        protected readonly float radius;
+        private readonly int numSegments;
+        private readonly float radius;
+        private readonly float textureVPower;
 
-        public CylinderGenerator(Vector3 startPoint, float length, int numSides, int numSegments, float radius)
+        public CylinderGenerator(Vector3 startPoint, int numSides, int numSegments, float radius, float textureVPower)
         {
             this.startPoint = startPoint;
-            this.length = length;
             this.numSides = numSides;
             this.numSegments = numSegments;
             this.radius = radius;
+            this.textureVPower = textureVPower;
         }
 
         protected virtual Vector2 GetScaleAtPos(float position) => new Vector2(1, 1);
@@ -53,8 +53,10 @@ namespace SnakesAndLadders
         }
 
         protected Vector2 GetUVForPosAndAngle(float pos, float angle)
-        { var u = Mathf.InverseLerp(-180, 180, angle);
-            return new Vector2(u, pos);
+        {
+            var u = Mathf.InverseLerp(180, -180, angle);
+            var v = Mathf.Pow(pos, 1 / textureVPower);
+            return new Vector2(u, v);
         }
 
         protected virtual void StartSection(MeshSection section)

@@ -19,7 +19,8 @@ public class NormalsViewer : MonoBehaviour
         var vertNorms = mesh.vertices.Zip(mesh.normals, (v, n) => (vert: v, normal: n));
         foreach (var (vert, normal) in vertNorms)
         {
-            Debug.DrawRay(vert, normal.normalized / 20, Color.cyan);
+            vert.Scale(transform.localScale);
+            Debug.DrawRay(vert + transform.position, normal.normalized / 20, Color.cyan);
         }
     }
 }
